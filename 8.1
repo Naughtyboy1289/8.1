@@ -1,0 +1,154 @@
+package com.example;
+
+import java.io.*;
+import java.sql.*;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.*;
+
+@WebServlet("/portal")
+public class PortalServlet extends HttpServlet {
+
+    // Database connection details
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USER = "root";
+    private static final String PASS = "root";
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+
+        String action = request.getParameter("action");
+
+        out.println("<!DOCTYPE html><html><head><title>Portal</title></head>");
+        out.println("<body style='font-family:Arial;text-align:center;margin-top:50px;'>");
+
+        if (action == null) {
+            out.println("<h1>Welcome to Web Portal</h1>");
+            out.println("<a href='portal?action=login'>Login</a> | ");
+            out.println("<a href='portal?action=employees'>View Employees</a> | ");
+            out.println("<a href='portal?action=attendance'>Mark Attendance</a>");
+        }
+
+        // --- PART A: Login Form ---
+        else if (action.equals("login")) {
+            out.println("<h2>User Login</h2>");
+            out.println("<form method='post' action='portal?action=loginCheck'>");
+            out.println("Username: <input type='text' name='username' required><br><br>");
+            out.println("Password: <input type='password' name='password' required><br><br>");
+            out.println("<input type='submit' value='Login'>");
+            out.println("</form>");
+        }
+
+        // --- PART B: Employee Display ---
+        else if (action.equals("employees")) {
+            out.println("<h2>Employee Records</h2>");
+            out.println("<form method='get' action='portal'>");
+            out.println("<input type='hidden' name='action' value='employees'>");
+            out.println("Search by ID: <input type='text' name='empid'>");
+            out.println("<input type='submit' value='Search'>");
+            out.println("</form><br>");
+
+            String empId = request.getParameter("empid");
+
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                Connection con = DriverManager.getConnection(URL, USER, PASS);
+                Statement st = con.createStatement();
+
+                ResultSet rs;
+                if (empId != null && !empId.isEmpty()) {
+                    rs = st.executeQuery("SELECT * FROM Employee WHERE EmpID=" + empId);
+                } else {
+                    rs = st.executeQuery("SELECT * FROM Employee");
+                }
+
+                out.println("<table border='1' align='center' cellpadding='10'><tr><th>ID</th><th>Name</th><th>Salary</th></tr>");
+                while (rs.next()) {
+                    out.println("<tr><td>" + rs.getInt("EmpID") + "</td><td>" +
+                            rs.getString("Name") + "</td><td>" +
+                            rs.getDouble("Salary") + "</td></tr>");
+                }
+                out.println("</table>");
+
+                con.close();
+            } catch (Exception e) {
+                out.println("<p style='color:red;'>Error: " + e.getMessage() + "</p>");
+            }
+        }
+
+        // --- PART C: Attendance Form ---
+        else if (action.equals("attendance")) {
+            out.println("<h2>Student Attendance</h2>");
+            out.println("<form method='post' action='portal?action=markAttendance'>");
+            out.println("Student ID: <input type='text' name='studentId' required><br><br>");
+            out.println("Date: <input type='date' name='date' required><br><br>");
+            out.println("Status: <select name='status'><option value='Present'>Present</option><option value='Absent'>Absent</option></select><br><br>");
+            out.println("<input type='submit' value='Submit'>");
+            out.println("</form>");
+        }
+
+        out.println("</body></html>");
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+        String action = request.getParameter("action");
+
+        // --- PART A: Login Validation ---
+        if ("loginCheck".equals(action)) {
+            String username = request.getParameter("username");
+            String password = request.getParameter("password");
+
+            if ("admin".equals(username) && "12345".equals(password)) {
+                out.println("<html><body style='text-align:center;font-family:Arial;margin-top:100px;'>");
+                out.println("<h2>Welcome, " + username + "!</h2>");
+                out.println("<p>Login successful.</p>");
+                out.println("<a href='portal'>Back to Menu</a>");
+                out.println("</body></html>");
+            } else {
+                out.println("<html><body style='text-align:center;font-family:Arial;margin-top:100px;'>");
+                out.println("<h3 style='color:red;'>Invalid username or password!</h3>");
+                out.println("<a href='portal?action=login'>Try Again</a>");
+                out.println("</body></html>");
+            }
+        }
+
+        // --- PART C: Attendance Submission ---
+        else if ("markAttendance".equals(action)) {
+            String studentId = request.getParameter("studentId");
+            String date = request.getParameter("date");
+            String status = request.getParameter("status");
+
+            try {
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                Connection con = DriverManager.getConnection(URL, USER, PASS);
+                PreparedStatement ps = con.prepareStatement(
+                        "INSERT INTO Attendance (StudentID, Date, Status) VALUES (?, ?, ?)");
+                ps.setString(1, studentId);
+                ps.setString(2, date);
+                ps.setString(3, status);
+                ps.executeUpdate();
+
+                out.println("<html><body style='text-align:center;font-family:Arial;margin-top:100px;'>");
+                out.println("<h2>Attendance Recorded Successfully!</h2>");
+                out.println("<p>Student ID: " + studentId + "</p>");
+                out.println("<p>Date: " + date + "</p>");
+                out.println("<p>Status: " + status + "</p>");
+                out.println("<a href='portal?action=attendance'>Back</a>");
+                out.println("</body></html>");
+
+                con.close();
+            } catch (Exception e) {
+                out.println("<p style='color:red;'>Error: " + e.getMessage() + "</p>");
+            }
+        }
+    }
+}
