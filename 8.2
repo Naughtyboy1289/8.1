@@ -1,0 +1,59 @@
+package com.example;
+
+import java.io.*;
+import java.sql.*;
+import jakarta.servlet.*;
+import jakarta.servlet.http.*;
+import jakarta.servlet.annotation.*;
+
+@WebServlet("/employees")
+public class EmployeeServlet extends HttpServlet {
+
+    private static final String URL = "jdbc:mysql://localhost:3306/testdb";
+    private static final String USER = "root";
+    private static final String PASS = "root";
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
+
+        String empId = request.getParameter("empid");
+
+        out.println("<html><body style='font-family:Arial;text-align:center;'>");
+        out.println("<h2>Employee Records</h2>");
+        out.println("<form method='get' action='employees'>");
+        out.println("Search by Employee ID: <input type='text' name='empid'>");
+        out.println("<input type='submit' value='Search'>");
+        out.println("</form><br>");
+
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            Connection con = DriverManager.getConnection(URL, USER, PASS);
+            Statement st = con.createStatement();
+
+            ResultSet rs;
+            if (empId != null && !empId.isEmpty()) {
+                rs = st.executeQuery("SELECT * FROM Employee WHERE EmpID=" + empId);
+            } else {
+                rs = st.executeQuery("SELECT * FROM Employee");
+            }
+
+            out.println("<table border='1' align='center' cellpadding='10'><tr><th>EmpID</th><th>Name</th><th>Salary</th></tr>");
+            while (rs.next()) {
+                out.println("<tr><td>" + rs.getInt("EmpID") + "</td><td>" +
+                        rs.getString("Name") + "</td><td>" +
+                        rs.getDouble("Salary") + "</td></tr>");
+            }
+            out.println("</table>");
+
+            con.close();
+        } catch (Exception e) {
+            out.println("<p style='color:red;'>Error: " + e.getMessage() + "</p>");
+        }
+
+        out.println("</body></html>");
+    }
+}
